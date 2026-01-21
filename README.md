@@ -1,46 +1,77 @@
 # Quant Starter 📊
 
 A lightweight, standardized Python project skeleton designed for quantitative finance analysis.
-This project establishes a foundational structure for data processing, metric calculation (Mean, Volatility, Max Drawdown), and automated performance reporting.
+
+This project provides foundational tools for:
+- Data I/O operations (CSV handling)
+- Basic quantitative metrics (Mean, Volatility, Max Drawdown)
+- **Data quality inspection** (detecting missing values, logical errors, outliers)
+---
 
 ## 📁 Project Structure
 
 ```text
 quant_starter/
-├── README.md               # Project documentation
-├── requirements.txt        # Python dependencies
-├── .gitignore             # Git ignore rules
+├── README.md                   # Project documentation
+├── requirements.txt            # Python dependencies
+├── .gitignore                  # Git ignore rules
+│
 ├── data/
-│   ├── raw/               # Raw data (e.g., sample_prices.csv)
-│   └── processed/         # Processed data
+│   ├── raw/                    # Raw data files
+│   │   ├── sample_prices.csv       # Simple price data
+│   │   ├── dirty_stock_data.csv    # Test data with errors
+│   │   └── clean_stock_data.csv    # Clean OHLCV data
+│   └── processed/              # Processed data (generated)
+│
 ├── src/
 │   ├── __init__.py
-│   ├── config.py          # Configuration settings
-│   ├── io_utils.py        # I/O utilities (CSV handling)
-│   └── metrics.py         # Core metric calculations
+│   ├── config.py               # Configuration settings
+│   ├── io_utils.py             # File I/O utilities
+│   ├── metrics.py              # Quantitative metrics
+│   └── data_checker.py         # Data quality inspector
+│
 ├── tests/
 │   ├── __init__.py
-│   └── test_metrics.py    # Unit tests
+│   ├── test_metrics.py         # Tests for metrics
+│   └── test_checker.py         # Tests for data checker
+│
 └── scripts/
-    └── run_basic_report.py  # Entry point script
+    ├── run_basic_report.py     # Basic analysis report
+    └── check_my_data.py        # Data quality check script
+    
     
 🚀 Getting Started
 
 1. Prerequisites
-Ensure you have Python 3.8+ installed on your system.
+
+Python 3.8 or higher
+pip (Python package manager)
 
 2. Installation
-Clone the repository and install the required dependencies:
 
+# Clone the repository
+git clone <repository-url>
+cd quant_starter
+
+# Install dependencies
 pip install -r requirements.txt
 
-3. Usage
-Run the main analysis script to process the sample data and generate a performance report:
+3. Verify Installation
+
+# Run all tests
+pytest tests/ -v
+
+📊 Module 1: Basic Metrics
 
 python scripts/run_basic_report.py
 
-Expected Output:
+Features
+Function	Description
+mean(x)	Calculate arithmetic mean
+std(x)	Calculate standard deviation (population)
+max_drawdown(nav)	Calculate maximum drawdown from NAV series
 
+Sample Output
 ==================================================
         📊 Basic Quantitative Analysis Report
 ==================================================
@@ -48,110 +79,196 @@ Expected Output:
 📂 Loading Data: data/raw/sample_prices.csv
    Total records: 10
 
-📈 Data Preview:
-   Start Date: 2024-01-01, Price: 100.0
-   End Date:   2024-01-10, Price: 112.0
-
 📊 Return Statistics:
    Trading Days: 9
    Avg Daily Return: 1.2877%
    Volatility:       2.2067%
 
 💰 NAV Analysis:
-   Start NAV:    1.0000
-   Final NAV:    1.1200
    Total Return: 12.00%
    Max Drawdown: 4.55%
    
-4. Testing
-This project includes a suite of unit tests to ensure calculation accuracy. Run the tests using pytest:
+Max Drawdown Algorithm
+The implementation uses an efficient O(N) single-pass algorithm:
 
+def max_drawdown(nav_series):
+    max_dd = 0.0
+    peak = nav_series[0]
+    
+    for nav in nav_series:
+        if nav > peak:
+            peak = nav
+        drawdown = (peak - nav) / peak
+        if drawdown > max_dd:
+            max_dd = drawdown
+    
+    return max_dd
+    
+🔍 Module 2: Data Quality Checker
+Purpose
+Detect common data quality issues in OHLCV (Open, High, Low, Close, Volume) financial data before using it for analysis or backtesting.
+
+# Check default test file
+python scripts/check_my_data.py
+
+# Check a specific file
+python scripts/check_my_data.py path/to/your/data.csv
+
+Checks Performed
+Category	Check	Description
+Integrity	Missing Values	Detects NaN/NULL values in any column
+Integrity	Duplicate Dates	Finds repeated date entries
+Logic	High < Low	Impossible: high price below low price
+Logic	Price Range	Open/Close should be within [Low, High]
+Logic	Negative Values	Prices and volume cannot be negative
+Continuity	Date Gaps	Gaps larger than 3 days (possible missing data)
+Outliers	Extreme Moves	Daily returns exceeding ±10%
+
+Sample Output
+
+============================================================
+        📋 DATA QUALITY REPORT
+============================================================
+
+📊 BASIC INFO
+----------------------------------------
+   Total Rows: 20
+
+🔍 MISSING VALUES
+----------------------------------------
+   open: 1 missing
+   close: 1 missing
+
+📅 DUPLICATE DATES
+----------------------------------------
+   ❌ 1 duplicate date(s) found
+
+⚠️  LOGICAL CONSISTENCY
+----------------------------------------
+   High < Low errors:     1
+   Price out of range:    1
+   Negative values:       2
+   Total logical errors:  4
+
+📆 DATE CONTINUITY
+----------------------------------------
+   Gaps > 3 days:   1
+   Max gap (days):  7
+
+📈 EXTREME PRICE MOVES (>10%)
+----------------------------------------
+   Count: 2 day(s)
+
+============================================================
+❌ RESULT: 12 issue(s) found. Please review.
+============================================================
+
+Programmatic Usage
+
+import pandas as pd
+from src.data_checker import DataQualityChecker
+
+# Load your data
+df = pd.read_csv('your_data.csv')
+
+# Create checker and run
+checker = DataQualityChecker(df)
+report = checker.run_all_checks()
+
+# Print formatted report
+checker.print_report()
+
+# Access individual results
+print(f"Missing values: {report['missing_values']}")
+print(f"Logical errors: {report['logical_errors_total']}")
+
+Report Dictionary Structure
+
+{
+    "total_rows": 1000,
+    "missing_values": {"close": 2, "volume": 1},
+    "duplicate_dates": 0,
+    "high_low_errors": 1,
+    "price_range_errors": 2,
+    "negative_values": 0,
+    "logical_errors_total": 3,
+    "large_gaps": 1,
+    "max_gap_days": 7,
+    "extreme_moves": 5
+}
+
+🧪 Testing
+
+Run All Tests
+pytest tests/ -v
+
+Run Specific Test File
+
+# Test metrics module
 pytest tests/test_metrics.py -v
 
-If everything is correct, you should see all tests marked as PASSED.
+# Test data checker module
+pytest tests/test_checker.py -v
 
-🧠 Core Metrics Explained
-The core logic is located in src/metrics.py:
+Test Coverage Summary
+Module	Tests	Coverage
+metrics.py	14	mean, std, max_drawdown
+data_checker.py	18	All check functions
+Total	32
 
-1. Mean
-Calculates the arithmetic average of the dataset.
+📝 OHLCV Data Format
 
-2. Standard Deviation (Volatility)
-Measures the dispersion of a dataset relative to its mean.
+The data checker expects CSV files with these columns:
 
-Note: This implementation uses Population Standard Deviation (dividing by n), not Sample Standard Deviation (n-1).
+Column	Type	Description
+date	string/date	Trading date (YYYY-MM-DD)
+open	float	Opening price
+high	float	Highest price of the day
+low	float	Lowest price of the day
+close	float	Closing price
+volume	int/float	Trading volume
 
-3. Max Drawdown
-A key risk indicator measuring the largest single drop from peak to bottom in the value of a portfolio (before a new peak is achieved).
+Example
 
-Formula: MaxDD = (Peak - Trough) / Peak
-Logic:
-Iterate through the Net Asset Value (NAV) series.
-Track the running maximum (Peak).
-Calculate the drawdown for every point relative to that Peak.
-Record the maximum drawdown observed.
-🛠 Development Log
-L0-Task1: Project initialization, CSV I/O implementation, core metric algorithms, and unit testing.
+date,open,high,low,close,volume
+2024-01-01,100.00,105.00,99.00,103.00,1000000
+2024-01-02,103.00,108.00,102.00,106.00,1100000
+
+⚠️ Important Notes
+Standard Deviation
+This project uses Population Standard Deviation (dividing by n), not Sample Standard Deviation (n-1).
+
+Vectorized Operations
+All data processing uses Pandas vectorized operations for performance. No row-by-row iteration (iterrows()) is used.
+
+# ✅ Correct (fast)
+errors = df[df['high'] < df['low']]
+
+# ❌ Wrong (slow)
+for index, row in df.iterrows():
+    if row['high'] < row['low']:
+        ...
+        
+# ✅ Correct (fast)
+errors = df[df['high'] < df['low']]
+
+# ❌ Wrong (slow)
+for index, row in df.iterrows():
+    if row['high'] < row['low']:
+        ...
+        
+🛠️ Development Log
+Version	Task	Description
+v0.1	L0-Task1	Project skeleton, metrics, basic report
+v0.2	L0-Task2	Data quality checker with tests
 
 📄 License
-
 MIT License
-
 
 ---
 
-### 📝 How to update your code for English Output
+## 5.3 提交到 Git
 
-Since you are making this international, you should also update your `scripts/run_basic_report.py` to print English text instead of Chinese.
-
-**Open `scripts/run_basic_report.py` and replace the `main()` function with this:**
-
-```python
-def main():
-    """Main function: Execute the full analysis process"""
-    
-    print("=" * 50)
-    print("        📊 Basic Quantitative Analysis Report")
-    print("=" * 50)
-    print()
-    
-    # ===== 1. Load Data =====
-    data_path = "data/raw/sample_prices.csv"
-    print(f"📂 Loading Data: {data_path}")
-    
-    try:
-        df = read_csv(data_path)
-    except FileNotFoundError as e:
-        print(f"❌ Error: {e}")
-        return
-    
-    print(f"   Total records: {len(df)}")
-    print()
-    
-    # ===== 2. Extract Prices =====
-    prices = df['close'].tolist()
-    dates = df['date'].tolist()
-    
-    print("📈 Data Preview:")
-    print(f"   Start Date: {dates[0]}, Price: {prices[0]}")
-    print(f"   End Date:   {dates[-1]}, Price: {prices[-1]}")
-    print()
-    
-    # ===== 3. Calculate Returns =====
-    returns = calculate_returns(prices)
-    print("📊 Return Statistics:")
-    print(f"   Trading Days: {len(returns)}")
-    print(f"   Avg Daily Return: {mean(returns) * 100:.4f}%")
-    print(f"   Volatility:       {std(returns) * 100:.4f}%")
-    print()
-    
-    # ===== 4. Calculate NAV and Max Drawdown =====
-    nav = calculate_nav(returns)
-    mdd = max_drawdown(nav)
-    
-    print("💰 NAV Analysis:")
-    print(f"   Start NAV:    {nav[0]:.4f}")
-    print(f"   Final NAV:    {nav[-1]:.4f}")
-    print(f"   Total Return: {(nav[-1] - 1) * 100:.2f}%")
-    print(f"   Max Drawdown: {mdd * 100:.2f}%")
-    print()
+```bash
+git add .
+git commit -m "Update README with Task2 documentation"
