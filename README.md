@@ -265,10 +265,4 @@ v0.2	L0-Task2	Data quality checker with tests
 📄 License
 MIT License
 
----
 
-## 5.3 提交到 Git
-
-```bash
-git add .
-git commit -m "Update README with Task2 documentation"
