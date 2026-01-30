@@ -3,9 +3,11 @@
 A lightweight, standardized Python project skeleton designed for quantitative finance analysis.
 
 This project provides foundational tools for:
-- Data I/O operations (CSV handling)
-- Basic quantitative metrics (Mean, Volatility, Max Drawdown)
-- **Data quality inspection** (detecting missing values, logical errors, outliers)
+- **Data I/O**: CSV and Parquet file handling
+- **Data Quality**: Detecting missing values, logical errors, outliers
+- **Data Processing**: ETL pipeline with cleaning and feature engineering
+- **Quantitative Metrics**: Mean, Volatility, Max Drawdown
+
 ---
 
 ## 📁 Project Structure
@@ -18,26 +20,31 @@ quant_starter/
 │
 ├── data/
 │   ├── raw/                    # Raw data files
-│   │   ├── sample_prices.csv       # Simple price data
-│   │   ├── dirty_stock_data.csv    # Test data with errors
-│   │   └── clean_stock_data.csv    # Clean OHLCV data
+│   │   ├── sample_prices.csv
+│   │   ├── dirty_stock_data.csv
+│   │   ├── clean_stock_data.csv
+│   │   └── stock_data_dirty.csv
 │   └── processed/              # Processed data (generated)
+│       └── market_data.parquet
 │
 ├── src/
 │   ├── __init__.py
 │   ├── config.py               # Configuration settings
 │   ├── io_utils.py             # File I/O utilities
-│   ├── metrics.py              # Quantitative metrics
-│   └── data_checker.py         # Data quality inspector
+│   ├── metrics.py              # Quantitative metrics (Mean, Std, MaxDD)
+│   ├── data_checker.py         # Data quality inspector
+│   └── processors.py           # ETL: Cleaning & Feature Engineering
 │
 ├── tests/
 │   ├── __init__.py
 │   ├── test_metrics.py         # Tests for metrics
-│   └── test_checker.py         # Tests for data checker
+│   ├── test_checker.py         # Tests for data checker
+│   └── test_processors.py      # Tests for data processor
 │
 └── scripts/
     ├── run_basic_report.py     # Basic analysis report
-    └── check_my_data.py        # Data quality check script
+    ├── check_my_data.py        # Data quality check script
+    └── run_etl.py              # ETL pipeline runner
     
     
 🚀 Getting Started
@@ -62,35 +69,18 @@ pip install -r requirements.txt
 pytest tests/ -v
 
 📊 Module 1: Basic Metrics
+Calculate fundamental quantitative metrics.
 
+Usage
 python scripts/run_basic_report.py
 
 Features
-Function	Description
-mean(x)	Calculate arithmetic mean
-std(x)	Calculate standard deviation (population)
-max_drawdown(nav)	Calculate maximum drawdown from NAV series
-
-Sample Output
-==================================================
-        📊 Basic Quantitative Analysis Report
-==================================================
-
-📂 Loading Data: data/raw/sample_prices.csv
-   Total records: 10
-
-📊 Return Statistics:
-   Trading Days: 9
-   Avg Daily Return: 1.2877%
-   Volatility:       2.2067%
-
-💰 NAV Analysis:
-   Total Return: 12.00%
-   Max Drawdown: 4.55%
-   
+Function	Description	Complexity
+mean(x)	Arithmetic mean	O(N)
+std(x)	Standard deviation (population)	O(N)
+max_drawdown(nav)	Maximum drawdown from NAV series	O(N)
 Max Drawdown Algorithm
-The implementation uses an efficient O(N) single-pass algorithm:
-
+Efficient single-pass O(N) implementation:
 def max_drawdown(nav_series):
     max_dd = 0.0
     peak = nav_series[0]
@@ -105,8 +95,9 @@ def max_drawdown(nav_series):
     return max_dd
     
 🔍 Module 2: Data Quality Checker
-Purpose
-Detect common data quality issues in OHLCV (Open, High, Low, Close, Volume) financial data before using it for analysis or backtesting.
+Detect common data quality issues in OHLCV financial data.
+
+Usage
 
 # Check default test file
 python scripts/check_my_data.py
@@ -116,16 +107,15 @@ python scripts/check_my_data.py path/to/your/data.csv
 
 Checks Performed
 Category	Check	Description
-Integrity	Missing Values	Detects NaN/NULL values in any column
+Integrity	Missing Values	Detects NaN/NULL values
 Integrity	Duplicate Dates	Finds repeated date entries
-Logic	High < Low	Impossible: high price below low price
-Logic	Price Range	Open/Close should be within [Low, High]
-Logic	Negative Values	Prices and volume cannot be negative
-Continuity	Date Gaps	Gaps larger than 3 days (possible missing data)
+Logic	High < Low	Impossible price relationship
+Logic	Price Range	Open/Close within [Low, High]
+Logic	Negative Values	Prices/volume cannot be negative
+Continuity	Date Gaps	Gaps larger than 3 days
 Outliers	Extreme Moves	Daily returns exceeding ±10%
 
 Sample Output
-
 ============================================================
         📋 DATA QUALITY REPORT
 ============================================================
@@ -139,130 +129,224 @@ Sample Output
    open: 1 missing
    close: 1 missing
 
-📅 DUPLICATE DATES
-----------------------------------------
-   ❌ 1 duplicate date(s) found
-
 ⚠️  LOGICAL CONSISTENCY
 ----------------------------------------
    High < Low errors:     1
-   Price out of range:    1
-   Negative values:       2
    Total logical errors:  4
-
-📆 DATE CONTINUITY
-----------------------------------------
-   Gaps > 3 days:   1
-   Max gap (days):  7
-
-📈 EXTREME PRICE MOVES (>10%)
-----------------------------------------
-   Count: 2 day(s)
 
 ============================================================
 ❌ RESULT: 12 issue(s) found. Please review.
 ============================================================
 
+🏭 Module 3: Data Processor (ETL Pipeline)
+Clean raw data and generate technical features for strategy research.
+
+Usage
+# Run with default paths
+python scripts/run_etl.py
+
+# Specify custom paths
+python scripts/run_etl.py --input data/raw/my_data.csv --output data/processed/output.parquet
+
+# Run with verification
+python scripts/run_etl.py --verify
+
+ETL Pipeline Flow
+
+┌─────────────────────────────────────────────────────────────┐
+│  EXTRACT                                                    │
+│  └── Read CSV file                                          │
+├─────────────────────────────────────────────────────────────┤
+│  TRANSFORM                                                  │
+│  ├── Clean: Forward Fill (ffill) → Backward Fill (bfill)    │
+│  ├── Clean: Remove duplicate dates                          │
+│  ├── Feature: Daily Return                                  │
+│  ├── Feature: MA5 (5-day Moving Average)                    │
+│  ├── Feature: MA20 (20-day Moving Average)                  │
+│  └── Feature: Vol_20 (20-day Rolling Volatility)            │
+├─────────────────────────────────────────────────────────────┤
+│  LOAD                                                       │
+│  └── Save to Parquet format                                 │
+└─────────────────────────────────────────────────────────────┘
+
+Technical Features Added
+Feature	Description	Formula
+daily_return	Daily percentage change	(close[t] - close[t-1]) / close[t-1]
+MA5	5-day Simple Moving Average	mean(close[t-4:t+1])
+MA20	20-day Simple Moving Average	mean(close[t-19:t+1])
+Vol_20	20-day Rolling Volatility	std(daily_return[t-19:t+1])
+
+Data Cleaning Strategy
+Forward Fill (ffill) + Backward Fill (bfill)
+
+Original:           After ffill:        After bfill:
+─────────────────────────────────────────────────────
+Row 0: NaN          Row 0: NaN          Row 0: 100  ← bfill
+Row 1: 100          Row 1: 100          Row 1: 100
+Row 2: NaN    →     Row 2: 100    →     Row 2: 100  ← ffill
+Row 3: 105          Row 3: 105          Row 3: 105
+
 Programmatic Usage
-
 import pandas as pd
-from src.data_checker import DataQualityChecker
+from src.processors import DataProcessor
 
-# Load your data
-df = pd.read_csv('your_data.csv')
+# Load raw data
+df = pd.read_csv('data/raw/stock_data.csv')
 
-# Create checker and run
-checker = DataQualityChecker(df)
-report = checker.run_all_checks()
+# Create processor and run pipeline
+processor = DataProcessor(df)
+processor.clean()           # Handle NaN, duplicates
+processor.add_features()    # Add MA5, MA20, Vol_20
 
-# Print formatted report
-checker.print_report()
+# Save to Parquet
+processor.save_to_parquet('data/processed/output.parquet')
 
-# Access individual results
-print(f"Missing values: {report['missing_values']}")
-print(f"Logical errors: {report['logical_errors_total']}")
+# Or use method chaining
+processor = DataProcessor(df)
+processor.clean().add_features().save_to_parquet('output.parquet')
 
-Report Dictionary Structure
+Sample Output
+============================================================
+        🏭 ETL PIPELINE
+============================================================
 
-{
-    "total_rows": 1000,
-    "missing_values": {"close": 2, "volume": 1},
-    "duplicate_dates": 0,
-    "high_low_errors": 1,
-    "price_range_errors": 2,
-    "negative_values": 0,
-    "logical_errors_total": 3,
-    "large_gaps": 1,
-    "max_gap_days": 7,
-    "extreme_moves": 5
-}
+📥 STEP 1: EXTRACT
+----------------------------------------
+   Reading: data/raw/stock_data_dirty.csv
+   ✅ Loaded 25 rows, 6 columns
+   Missing values: 4
+
+🧹 STEP 2: TRANSFORM (Cleaning)
+----------------------------------------
+   ✅ Missing values after cleaning: 0
+   ✅ Duplicate dates removed
+
+⚙️  STEP 3: TRANSFORM (Feature Engineering)
+----------------------------------------
+   ✅ New features added: ['daily_return', 'MA5', 'MA20', 'Vol_20']
+   MA5:  21 valid values (first 4 are NaN)
+   MA20: 6 valid values (first 19 are NaN)
+
+💾 STEP 4: LOAD
+----------------------------------------
+✅ Data saved to: data/processed/market_data.parquet
+   Rows: 25, Columns: 10
+
+============================================================
+✅ ETL Pipeline completed successfully!
+============================================================
+
+
+Important Notes
+⚠️ No Look-ahead Bias
+All calculations use only past data. The rolling() function includes:
+
+Current row
+Previous (N-1) rows
+
+# ✅ Correct: MA5 uses rows [t-4, t-3, t-2, t-1, t]
+df['MA5'] = df['close'].rolling(window=5).mean()
+
+# ❌ Wrong: Using future data would cause look-ahead bias
+# df['MA5'] = df['close'].shift(-2).rolling(window=5).mean()
+
+NaN Values in Features
+Feature	First N rows are NaN	Reason
+daily_return	1	No previous day to compare
+MA5	4	Need 5 days of data
+MA20	19	Need 20 days of data
+Vol_20	20	Need 20 returns (21 prices)
 
 🧪 Testing
-
 Run All Tests
 pytest tests/ -v
 
 Run Specific Test File
-
 # Test metrics module
 pytest tests/test_metrics.py -v
 
 # Test data checker module
 pytest tests/test_checker.py -v
 
+# Test data processor module
+pytest tests/test_processors.py -v
+
 Test Coverage Summary
 Module	Tests	Coverage
 metrics.py	14	mean, std, max_drawdown
-data_checker.py	18	All check functions
-Total	32
+data_checker.py	18	All quality checks
+processors.py	22	Cleaning, features, file I/O
+Total	54
 
-📝 OHLCV Data Format
-
-The data checker expects CSV files with these columns:
-
-Column	Type	Description
-date	string/date	Trading date (YYYY-MM-DD)
-open	float	Opening price
-high	float	Highest price of the day
-low	float	Lowest price of the day
-close	float	Closing price
-volume	int/float	Trading volume
-
-Example
+📝 Data Formats
+Input: OHLCV CSV
 
 date,open,high,low,close,volume
 2024-01-01,100.00,105.00,99.00,103.00,1000000
 2024-01-02,103.00,108.00,102.00,106.00,1100000
 
+Output: Processed Parquet
+Column	Type	Description
+date	datetime	Trading date
+open	float	Opening price
+high	float	Highest price
+low	float	Lowest price
+close	float	Closing price
+volume	int	Trading volume
+daily_return	float	Daily return (%)
+MA5	float	5-day moving average
+MA20	float	20-day moving average
+Vol_20	float	20-day volatility
+
 ⚠️ Important Notes
-Standard Deviation
-This project uses Population Standard Deviation (dividing by n), not Sample Standard Deviation (n-1).
-
 Vectorized Operations
-All data processing uses Pandas vectorized operations for performance. No row-by-row iteration (iterrows()) is used.
+All data processing uses Pandas vectorized operations for performance:
 
-# ✅ Correct (fast)
-errors = df[df['high'] < df['low']]
+# ✅ Correct (fast) - Vectorized
+df['MA5'] = df['close'].rolling(window=5).mean()
 
-# ❌ Wrong (slow)
-for index, row in df.iterrows():
-    if row['high'] < row['low']:
-        ...
-        
-# ✅ Correct (fast)
-errors = df[df['high'] < df['low']]
+# ❌ Wrong (slow) - Row iteration
+for i in range(len(df)):
+    df.loc[i, 'MA5'] = df['close'].iloc[max(0,i-4):i+1].mean()
+    
+Parquet vs CSV
+Aspect	CSV	Parquet
+Read Speed	Slow	10-100x faster
+File Size	Large	Compressed
+Type Preservation	No	Yes
+Human Readable	Yes	No
 
-# ❌ Wrong (slow)
-for index, row in df.iterrows():
-    if row['high'] < row['low']:
-        ...
-        
 🛠️ Development Log
 Version	Task	Description
 v0.1	L0-Task1	Project skeleton, metrics, basic report
 v0.2	L0-Task2	Data quality checker with tests
+v0.3	L1-Task1	ETL pipeline: cleaning & feature engineering
+
 
 📄 License
 MIT License
+
+
+---
+
+## 5.3 提交到 Git
+
+```bash
+git add .
+git commit -m "Update README with L1-Task1 ETL pipeline documentation"
+
+5.4 查看 Git 提交历史
+git log --oneline
+你应该看到多次提交记录。
+
+5.5 最终验收检查
+# 1. 运行所有测试
+pytest tests/ -v
+
+# 2. 运行 ETL 脚本
+python scripts/run_etl.py --verify
+
+# 3. 检查生成的 Parquet 文件
+python -c "import pandas as pd; df = pd.read_parquet('data/processed/market_data.parquet'); print(df.head())"
 
 
